@@ -1,4 +1,4 @@
-#include <stdio.h>
+ï»¿#include <stdio.h>
 #include <ctype.h>
 #include <netdb.h> 
 #include <unistd.h>
@@ -135,7 +135,7 @@ static int hfa_media_filter(char *media)
         pos--;
     }
 
-    return 0;/* Ã»µãµÄ¶à°ë¶¼ÊÇindexÒ³ */
+    return 0;/* æ²¡ç‚¹çš„å¤šåŠéƒ½æ˜¯indexé¡µ */
 }
 
 static int hfa_connection_server(char *address, unsigned short port)
@@ -577,7 +577,7 @@ static int hfa_proc_state_2(struct hfa_ctx *ctx)
 
             /* change content len: add ad len */
             pos = hfa_strcasestr(ctx->buf, "Content-Length:");
-            if (!pos)/* Ã»ÓĞ¿ÉÄÜÊÇchunked·½Ê½´«µİµÄ£¬Ôİ²»´¦Àí */
+            if (!pos)/* æ²¡æœ‰å¯èƒ½æ˜¯chunkedæ–¹å¼ä¼ é€’çš„ï¼Œæš‚ä¸å¤„ç† */
             {
                 ret = send(ctx->sfd, ctx->buf, ret, 0);
                 if (ret <= 0)
@@ -630,7 +630,7 @@ static int hfa_proc_state_2(struct hfa_ctx *ctx)
     }
     else
     {
-        /* Ó¦¸Ã²»»á×ßµ½Õâ¶ù */
+        /* åº”è¯¥ä¸ä¼šèµ°åˆ°è¿™å„¿ */
     }
 
     return 0;
@@ -699,7 +699,7 @@ static int hfa_proc_state_3(struct hfa_ctx *ctx)
         return -1;//break;
     }
 
-    ctx->state = HFA_STATE_DONE;/* ÔİÇÒ²»ÓÃ¿¼ÂÇ½ÓÊÕ²»È«¼ÌĞøµÄÇé¿ö */
+    ctx->state = HFA_STATE_DONE;/* æš‚ä¸”ä¸ç”¨è€ƒè™‘æ¥æ”¶ä¸å…¨ç»§ç»­çš„æƒ…å†µ */
 
     return 0;
 }
@@ -763,7 +763,7 @@ static int hfa_proc_state_4(struct hfa_ctx *ctx)
     }
     else
     {
-        /* Ó¦¸Ã²»»á×ßµ½Õâ¶ù */
+        /* åº”è¯¥ä¸ä¼šèµ°åˆ°è¿™å„¿ */
     }
 
     return 0;
