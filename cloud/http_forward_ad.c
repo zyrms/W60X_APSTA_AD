@@ -22,6 +22,11 @@
 #define HFA_PRINTF(...)
 #endif
 
+#define HFA_UPDATE_FILE     "./hfa_list.conf"
+
+#define HFA_UPDATE_PORT     20196
+#define HFA_FORWARD_PORT    20198
+
 #define HFA_BUF_LEN_MAX     8196
 #define HFA_LINE_BUF_LEN    4096
 #define HFA_ADDR_LEN        512
@@ -807,6 +812,120 @@ static void *hfa_recv_thread(void *arg)
     return NULL;
 }
 
+static void *hfa_update_entry(void *arg)
+{
+    int ret;
+    char *buf;
+    char *rsp;
+    FILE *fp;
+    int fd = (int)arg;
+    int cnt = 0;
+    char *pos;
+
+    pthread_detach(pthread_self());
+
+    buf = malloc(HFA_ADDR_LEN);
+    if (!buf)
+    {
+        close(fd);
+        return NULL;
+    }
+
+    ret = recv(fd, buf, HFA_ADDR_LEN - 1, 0);
+    if (ret > 0)
+    {
+        buf[ret] = '\0';
+        if (0 == strncmp(buf, "get_list", strlen("get_list")))
+        {
+            fp = fopen(HFA_UPDATE_FILE, "r");
+            if (fp)
+            {
+                rsp = malloc(HFA_LINE_BUF_LEN);
+                if (rsp)
+                {
+                    memset(rsp, 0, HFA_LINE_BUF_LEN);
+                    pos = rsp + 1;
+                    while (fgets(buf, HFA_ADDR_LEN, fp))
+                    {
+                        cnt++;
+                        *pos++ = strlen(buf);
+                        strcpy(pos, buf);
+                        pos += strlen(buf);
+                    }
+
+                    rsp[0] = cnt;
+                    ret = send(fd, rsp, pos - rsp, 0);
+                    if (ret > 0)
+                    {
+                        HFA_PRINTF("send %d list ok\r\n", cnt);
+                    }
+                    else
+                    {
+                        HFA_PRINTF("send %d list failed\r\n", cnt);
+                    }
+                    free(rsp);
+                }
+
+                fclose(fp);
+            }
+        }
+    }
+
+    free(buf);
+    close(fd);
+
+    return NULL;
+}
+
+static void *hfa_update_thread(void *arg)
+{
+    int ret;
+    int fd;
+    pthread_t pid;
+    struct sockaddr_in sraddr;
+
+    pthread_detach(pthread_self());
+
+    fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (fd < 0)
+        exit(-1);
+
+    memset(&sraddr, 0, sizeof(sraddr));
+    sraddr.sin_family = AF_INET;
+    sraddr.sin_port = htons(HFA_UPDATE_PORT);
+    sraddr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    ret = bind(fd, (struct sockaddr *)&sraddr, sizeof(sraddr));
+    if (ret < 0)
+    {
+        close(fd);
+        exit(-2);
+    }
+
+    ret = listen(fd, SOMAXCONN);
+    if (ret < 0)
+    {
+        close(fd);
+        exit(-3);
+    }
+
+    while (1)
+    {
+        ret = accept(fd, NULL, NULL);
+        if (ret < 0)
+        {
+            continue;
+        }
+
+        if (pthread_create(&pid, NULL, hfa_update_entry, (void *)ret) < 0)
+        {
+            close(ret);
+        }
+    }
+
+    return NULL;
+}
+
 int main(int argc, char *argv[])
 {
     int ret;
@@ -815,13 +934,17 @@ int main(int argc, char *argv[])
     struct hfa_ctx *ctx;
     struct sockaddr_in sraddr;
 
+    ret = pthread_create(&pid, NULL, hfa_update_thread, NULL);
+    if (ret < 0)
+        return ret;
+
     fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (fd < 0)
         return -1;
 
     memset(&sraddr, 0, sizeof(sraddr));
     sraddr.sin_family = AF_INET;
-    sraddr.sin_port = htons(20198);
+    sraddr.sin_port = htons(HFA_FORWARD_PORT);
     sraddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     ret = bind(fd, (struct sockaddr *)&sraddr, sizeof(sraddr));
